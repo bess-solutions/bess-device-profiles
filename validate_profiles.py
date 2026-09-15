@@ -42,7 +42,7 @@ def validate_modbus_registers(registers: dict, filename: str) -> bool:
         # Validate optional fields if present
         if "type" in reg:
             reg_type = reg["type"].upper()
-            allowed_types = {"INT16", "UINT16", "INT32", "UINT32", "FLOAT32", "STRING", "INT64", "UINT64"}
+            allowed_types = {"INT16", "UINT16", "INT32", "UINT32", "FLOAT32", "STRING", "INT64", "UINT64", "ENUM16", "BITFIELD16", "BITFIELD32"}
             if reg_type not in allowed_types:
                 print(f"\n[ERR] ERROR in {filename}: Register '{name}' has invalid type '{reg_type}'. Allowed: {allowed_types}")
                 return False

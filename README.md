@@ -1,6 +1,6 @@
 # BESS Solutions — Device Profiles
 
-This repository centralizes industrial hardware device profiles used by **BESS Solutions** and the **BESSAI Edge Gateway** (`open-bess-edge`). It defines holding register mappings, scales, and byte orders for power conversion systems (PCS), battery management systems (BMS), and smart meters.
+This repository centralizes industrial hardware device profiles used by **BESS Solutions** and the **Open BESS Edge** (`open-bess-edge`). It defines holding register mappings, scales, and byte orders for power conversion systems (PCS), battery management systems (BMS), and smart meters.
 
 Separating these configurations from the main gateway logic allows:
 - **Rapid hardware onboarding:** Add support for new inverters by writing a single JSON file without altering code.
