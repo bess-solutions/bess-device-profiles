@@ -1,74 +1,38 @@
-# BESS Solutions — Device Profiles
+# BESS Device Profiles [![CI](https://github.com/bess-solutions/bess-device-profiles/actions/workflows/ci.yml/badge.svg)](https://github.com/bess-solutions/bess-device-profiles/actions)
 
-This repository centralizes industrial hardware device profiles used by **BESS Solutions** and the **Open BESS Edge** (`open-bess-edge`). It defines holding register mappings, scales, and byte orders for power conversion systems (PCS), battery management systems (BMS), and smart meters.
+Fuente única de verdad (SSOT) de perfiles de dispositivos industriales para almacenamiento en baterías (BESS), inversores híbridos y sistemas BMS.
 
-Separating these configurations from the main gateway logic allows:
-- **Rapid hardware onboarding:** Add support for new inverters by writing a single JSON file without altering code.
-- **Independent versioning:** Device updates do not require rebuilding or redeploying the core edge gateway.
-- **Easy contribution:** Open to manufacturers (BYD, Tesla, Huawei, SMA, etc.) and developers to maintain accurate register configurations.
+> **Política de Veracidad:** Los perfiles de fabricante provienen de la documentación técnica oficial y de especificaciones Modbus/SunSpec de la industria. Su nivel de verificación es `unverified` (sin prueba contra hardware físico en banco de pruebas), salvo el perfil de referencia emulado.
 
 ---
 
-## 📂 Profiles Folder
+## 📂 Clasificación de Perfiles
 
-All device profiles live under the `profiles/` directory:
-- `huawei_sun2000.json` - Huawei SUN2000 Inverter Series.
-- `sma_sunny_tripower.json` - SMA Sunny Tripower Inverter.
-- `victron_multiplus2.json` - Victron Multiplus II PCS.
-- `fronius_gen24_byd.json` - Fronius Gen24 Hybrid + BYD Combo.
-- `byd_battery_box.json` - BYD Battery Box BMS.
-- `tesla_powerwall3.json` - Tesla Powerwall 3 BMS/Inverter.
-- `solaredge_storedge.json` - SolarEdge StorEdge.
+### Tier 1: Perfiles con Bindings Canónicos (Consumibles por `open-bess-edge`)
+Estos perfiles definen tanto el mapa de registros (`registers`) como el mapeo estándar (`canonical`) de telemetría física (`frequency_hz`, `v_grid_v`, `p_kw`, `q_kvar`, `soc_pct`, `soh_pct`).
+
+| Perfil | Fabricante | Modelo | Modo Edge | Nivel |
+|---|---|---|---|---|
+| [`open_bess_edge_reference.json`](profiles/open_bess_edge_reference.json) | BESS Solutions | Inversor / PCS de Referencia | **Control** | Reference (Emulado) |
+| [`huawei_sun2000.json`](profiles/huawei_sun2000.json) | Huawei | SUN2000-(2KTL-6KTL)-L1 | Monitor | Unverified |
+| [`sma_sunny_tripower.json`](profiles/sma_sunny_tripower.json) | SMA | Sunny Tripower Storage 60 | Monitor | Unverified |
+| [`fronius_gen24_byd.json`](profiles/fronius_gen24_byd.json) | Fronius | Symo GEN24 Plus + BYD | Monitor | Unverified |
+| [`solaredge_storedge.json`](profiles/solaredge_storedge.json) | SolarEdge | StorEdge SE5000H / SE7K | Monitor | Unverified |
+| [`victron_multiplus2.json`](profiles/victron_multiplus2.json) | Victron | MultiPlus-II GX 48/5000 | Monitor | Unverified |
+
+### Tier 2: Diccionarios Declarativos (Pendiente de Bindings Canónicos)
+Perfiles que contienen mapas de registros Modbus completos o tramas CAN bus de fabricantes, disponibles como especificación abierta pero aún sin mapeo a las variables canónicas de control del gateway:
+
+- [`deye_sunsynk_hybrid.json`](profiles/deye_sunsynk_hybrid.json): Inversores Deye / Sunsynk trifásicos (Modbus TCP).
+- [`goodwe_lynx_home.json`](profiles/goodwe_lynx_home.json): Baterías GoodWe Lynx Home (Modbus TCP).
+- [`byd_battery_box.json`](profiles/byd_battery_box.json): BYD Battery-Box Premium (CAN Bus Protocol v1.03).
+- [`tesla_powerwall3.json`](profiles/tesla_powerwall3.json): Tesla Powerwall 3 (CAN / REST / Neurio).
 
 ---
 
-## ⚙️ Profile Schema Structure
+## 🛠️ Validación Semántica
+Para auditar la sintaxis JSON, correspondencia de tipos de datos (e.g. `INT32` exige `count >= 2`) y coherencia de registros:
 
-Each JSON profile conforms to the following schema:
-
-```json
-{
-  "name": "Device Model Name",
-  "manufacturer": "Manufacturer Name",
-  "connection": {
-    "type": "modbus_tcp",
-    "default_port": 502,
-    "byte_order": "BIG",
-    "word_order": "BIG"
-  },
-  "registers": [
-    {
-      "address": 32080,
-      "tag": "ActivePower",
-      "type": "int32",
-      "scale": 1.0,
-      "permission": "r",
-      "description": "Active Power Output in Watts"
-    }
-  ]
-}
+```bash
+python validate_profiles.py
 ```
-
-### Fields:
-*   `byte_order` / `word_order`: Registers byte ordering (`BIG` or `LITTLE` endianness).
-*   `address`: Modbus 0-based holding register address.
-*   `tag`: Unique string identifier used by the gateway logic and metrics endpoints.
-*   `type`: Data format (e.g. `int16`, `uint16`, `int32`, `uint32`, `float32`).
-*   `scale`: Multiplication factor to convert raw register values to real units (e.g., `0.1` for temperature/SoC, `1.0` for Watts).
-*   `permission`: Access control (`r` for Read-only, `w` for Write-only, `rw` for Read-Write).
-
----
-
-## 🤝 How to Contribute
-
-Adding support for a new inverter or meter is the perfect way to get started with the BESS Solutions ecosystem:
-
-1.  **Fork** this repository.
-2.  Create a new JSON file under `profiles/` matching the format of `TEMPLATE_interop_certification.json`.
-3.  Add the Modbus addresses matching your manufacturer's datasheet.
-4.  Submit a **Pull Request**.
-
-All submissions are automatically validated by our CI schema checker.
-
----
-*BESS Solutions SpA — open@bess-solutions.cl*
