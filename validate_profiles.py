@@ -3,7 +3,8 @@
 validate_profiles.py
 ====================
 Autodetect and validate all BESS device profiles under the profiles/ folder.
-Supports polymorphic validation based on protocol (Modbus, CAN, HTTP_REST).
+Performs semantic Modbus checks (word count vs data type), canonical mappings,
+and verification level integrity.
 No external dependencies.
 """
 import os
@@ -39,12 +40,19 @@ def validate_modbus_registers(registers: dict, filename: str) -> bool:
             return False
         addresses.add(addr)
 
-        # Validate optional fields if present
         if "type" in reg:
             reg_type = reg["type"].upper()
             allowed_types = {"INT16", "UINT16", "INT32", "UINT32", "FLOAT32", "STRING", "INT64", "UINT64", "ENUM16", "BITFIELD16", "BITFIELD32"}
             if reg_type not in allowed_types:
                 print(f"\n[ERR] ERROR in {filename}: Register '{name}' has invalid type '{reg_type}'. Allowed: {allowed_types}")
+                return False
+
+            count = reg.get("count", 1)
+            if reg_type in {"INT32", "UINT32", "FLOAT32"} and count < 2:
+                print(f"\n[ERR] ERROR in {filename}: 32-bit register '{name}' ({reg_type}) requires count >= 2, got count={count}")
+                return False
+            if reg_type in {"INT64", "UINT64"} and count < 4:
+                print(f"\n[ERR] ERROR in {filename}: 64-bit register '{name}' ({reg_type}) requires count >= 4, got count={count}")
                 return False
 
     return True
@@ -89,6 +97,11 @@ def validate_file(filepath: str) -> bool:
         if not validate_modbus_registers(data["registers"], filename):
             return False
 
+    # Check verification block
+    verif = data.get("verification") or data.get("interop_certification")
+    if not verif:
+        print(f"\n[WARN] Profile {filename} does not declare 'verification' or 'interop_certification' block.")
+
     print("[OK]")
     return True
 
@@ -98,27 +111,21 @@ def main():
     profile_files = glob.glob(profiles_glob)
 
     if not profile_files:
-        print("[ERR] ERROR: No JSON profile files found under profiles/ directory.")
+        print("[ERR] No profiles found to validate.")
         sys.exit(1)
 
-    print(f"Found {len(profile_files)} profile files to validate.")
-    print("--------------------------------------------------")
+    all_passed = True
+    print(f"--- BESS Solutions Profile Linter: Auditing {len(profile_files)} profiles ---")
+    for p_path in sorted(profile_files):
+        if os.path.basename(p_path).startswith('TEMPLATE_'): continue
+        if not validate_file(p_path):
+            all_passed = False
 
-    success = True
-    for filepath in profile_files:
-        # Skip templates
-        if "TEMPLATE" in os.path.basename(filepath):
-            continue
-        if not validate_file(filepath):
-            success = False
-
-    print("--------------------------------------------------")
-    if success:
-        print("[OK] All device profiles successfully validated!")
-        sys.exit(0)
+    if not all_passed:
+        print("\n[FAIL] Profile linting failed.")
+        sys.exit(1)
     else:
-        print("[ERR] Profile validation failed. Please check the errors above.")
-        sys.exit(1)
+        print(f"\n[SUCCESS] All {len(profile_files)} profiles passed semantic checks.")
 
 if __name__ == "__main__":
     main()
